@@ -1,99 +1,118 @@
+import 'dart:async';
+
 import 'package:material_ui/material_ui.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
-import 'package:frontend/features/vehicles/data/mock_vehicles.dart';
 import 'package:frontend/features/vehicles/models/vehicle.dart';
 import 'package:frontend/features/vehicles/models/vehicle_enums.dart';
+import 'package:frontend/features/vehicles/models/vehicle_query_params.dart';
+import 'package:frontend/features/vehicles/providers/vehicle_providers.dart';
 import 'package:frontend/features/vehicles/widgets/vehicle_filters_bar.dart';
 import 'package:frontend/features/vehicles/widgets/vehicle_pagination_bar.dart';
 import 'package:frontend/features/vehicles/widgets/vehicle_state_views.dart';
 import 'package:frontend/features/vehicles/widgets/vehicle_table.dart';
 
-enum ViewMode { normal, loading, empty, error }
-
-class VehiclesScreen extends StatefulWidget {
+class VehiclesScreen extends ConsumerStatefulWidget {
   const VehiclesScreen({super.key});
 
   @override
-  State<VehiclesScreen> createState() => _VehiclesScreenState();
+  ConsumerState<VehiclesScreen> createState() => _VehiclesScreenState();
 }
 
-class _VehiclesScreenState extends State<VehiclesScreen> {
+class _VehiclesScreenState extends ConsumerState<VehiclesScreen> {
   final TextEditingController _searchController = TextEditingController();
+  Timer? _debounceTimer;
 
-  VehicleType? _selectedType;
-  FuelType? _selectedFuel;
-  VehicleStatus? _selectedStatus;
-
-  int _currentPage = 0;
-  int _pageSize = 10;
-
-  ViewMode _viewMode = ViewMode.normal;
+  @override
+  void initState() {
+    super.initState();
+    final initialSearch = ref.read(vehicleQueryParamsProvider).search;
+    if (initialSearch != null && initialSearch.isNotEmpty) {
+      _searchController.text = initialSearch;
+    }
+  }
 
   @override
   void dispose() {
+    _debounceTimer?.cancel();
     _searchController.dispose();
     super.dispose();
   }
 
-  bool get _hasActiveFilters =>
-      _searchController.text.trim().isNotEmpty ||
-      _selectedType != null ||
-      _selectedFuel != null ||
-      _selectedStatus != null;
-
-  void _resetFilters() {
-    setState(() {
-      _searchController.clear();
-      _selectedType = null;
-      _selectedFuel = null;
-      _selectedStatus = null;
-      _currentPage = 0;
+  void _onSearchChanged(String value) {
+    _debounceTimer?.cancel();
+    _debounceTimer = Timer(const Duration(milliseconds: 350), () {
+      final current = ref.read(vehicleQueryParamsProvider);
+      ref.read(vehicleQueryParamsProvider.notifier).state = current.copyWith(
+        search: value.trim().isEmpty ? null : value.trim(),
+        page: 0,
+      );
     });
   }
 
-  List<Vehicle> get _filteredVehicles {
-    final query = _searchController.text.trim().toLowerCase();
-
-    return kSampleVehicles.where((vehicle) {
-      if (query.isNotEmpty) {
-        final matchesNumber = vehicle.vehicleNumber.toLowerCase().contains(
-          query,
-        );
-        final matchesBrand = vehicle.brand.toLowerCase().contains(query);
-        final matchesModel = vehicle.model.toLowerCase().contains(query);
-        final matchesDriver = vehicle.driverName.toLowerCase().contains(query);
-
-        if (!matchesNumber &&
-            !matchesBrand &&
-            !matchesModel &&
-            !matchesDriver) {
-          return false;
-        }
-      }
-
-      if (_selectedType != null && vehicle.vehicleType != _selectedType) {
-        return false;
-      }
-
-      if (_selectedFuel != null && vehicle.fuelType != _selectedFuel) {
-        return false;
-      }
-
-      if (_selectedStatus != null && vehicle.status != _selectedStatus) {
-        return false;
-      }
-
-      return true;
-    }).toList();
+  void _onClearSearch() {
+    _debounceTimer?.cancel();
+    _searchController.clear();
+    final current = ref.read(vehicleQueryParamsProvider);
+    ref.read(vehicleQueryParamsProvider.notifier).state = current.copyWith(
+      search: null,
+      page: 0,
+    );
   }
 
-  List<Vehicle> _paginatedVehicles(List<Vehicle> list) {
-    final startIndex = _currentPage * _pageSize;
-    if (startIndex >= list.length) {
-      return [];
-    }
-    final endIndex = (startIndex + _pageSize).clamp(0, list.length);
-    return list.sublist(startIndex, endIndex);
+  void _onTypeChanged(VehicleType? type) {
+    final current = ref.read(vehicleQueryParamsProvider);
+    ref.read(vehicleQueryParamsProvider.notifier).state = current.copyWith(
+      vehicleType: () => type,
+      page: 0,
+    );
+  }
+
+  void _onFuelChanged(FuelType? fuel) {
+    final current = ref.read(vehicleQueryParamsProvider);
+    ref.read(vehicleQueryParamsProvider.notifier).state = current.copyWith(
+      fuelType: () => fuel,
+      page: 0,
+    );
+  }
+
+  void _onStatusChanged(VehicleStatus? status) {
+    final current = ref.read(vehicleQueryParamsProvider);
+    ref.read(vehicleQueryParamsProvider.notifier).state = current.copyWith(
+      status: () => status,
+      page: 0,
+    );
+  }
+
+  void _onResetAll() {
+    _debounceTimer?.cancel();
+    _searchController.clear();
+    ref.read(vehicleQueryParamsProvider.notifier).state =
+        const VehicleQueryParams();
+  }
+
+  void _onPageChanged(int newPage) {
+    final current = ref.read(vehicleQueryParamsProvider);
+    ref.read(vehicleQueryParamsProvider.notifier).state = current.copyWith(
+      page: newPage,
+    );
+  }
+
+  void _onPageSizeChanged(int newSize) {
+    final current = ref.read(vehicleQueryParamsProvider);
+    ref.read(vehicleQueryParamsProvider.notifier).state = current.copyWith(
+      size: newSize,
+      page: 0,
+    );
+  }
+
+  void _onSortChanged(String column, String direction) {
+    final current = ref.read(vehicleQueryParamsProvider);
+    ref.read(vehicleQueryParamsProvider.notifier).state = current.copyWith(
+      sortBy: column,
+      direction: direction,
+      page: 0,
+    );
   }
 
   void _handleAddVehiclePlaceholder() {
@@ -124,10 +143,8 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
     final breakpoint = context.breakpoint;
     final isDesktop = breakpoint >= ShadBreakpointLG(1024);
 
-    final filtered = _filteredVehicles;
-    final totalFiltered = filtered.length;
-    final totalPages = (totalFiltered / _pageSize).ceil();
-    final pageVehicles = _paginatedVehicles(filtered);
+    final params = ref.watch(vehicleQueryParamsProvider);
+    final vehicleListAsync = ref.watch(vehicleListProvider);
 
     return SingleChildScrollView(
       padding: EdgeInsets.all(isDesktop ? 28 : 16),
@@ -138,36 +155,65 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
           const SizedBox(height: 20),
           VehicleFiltersBar(
             searchController: _searchController,
-            onSearchChanged: (_) => setState(() => _currentPage = 0),
-            onClearSearch: () {
-              _searchController.clear();
-              setState(() => _currentPage = 0);
-            },
-            selectedType: _selectedType,
-            onTypeChanged: (type) => setState(() {
-              _selectedType = type;
-              _currentPage = 0;
-            }),
-            selectedFuel: _selectedFuel,
-            onFuelChanged: (fuel) => setState(() {
-              _selectedFuel = fuel;
-              _currentPage = 0;
-            }),
-            selectedStatus: _selectedStatus,
-            onStatusChanged: (status) => setState(() {
-              _selectedStatus = status;
-              _currentPage = 0;
-            }),
-            onResetAll: _resetFilters,
-            hasActiveFilters: _hasActiveFilters,
+            onSearchChanged: _onSearchChanged,
+            onClearSearch: _onClearSearch,
+            selectedType: params.vehicleType,
+            onTypeChanged: _onTypeChanged,
+            selectedFuel: params.fuelType,
+            onFuelChanged: _onFuelChanged,
+            selectedStatus: params.status,
+            onStatusChanged: _onStatusChanged,
+            onResetAll: _onResetAll,
+            hasActiveFilters: params.hasActiveFilters,
           ),
           const SizedBox(height: 16),
-          _buildTableCard(
-            context,
-            totalFiltered: totalFiltered,
-            totalPages: totalPages,
-            pageVehicles: pageVehicles,
-            colorScheme: colorScheme,
+          Container(
+            decoration: BoxDecoration(
+              color: colorScheme.card,
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: colorScheme.border),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: vehicleListAsync.when(
+                loading: () => const VehicleLoadingState(),
+                error: (error, _) => VehicleErrorState(
+                  message: error.toString(),
+                  onRetry: () => ref.refresh(vehicleListProvider),
+                ),
+                data: (pageResponse) {
+                  if (pageResponse.totalElements == 0) {
+                    if (params.hasActiveFilters) {
+                      return VehicleNoResultsState(onResetFilters: _onResetAll);
+                    }
+                    return VehicleEmptyState(
+                      onAddVehicle: _handleAddVehiclePlaceholder,
+                    );
+                  }
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      VehicleTable(
+                        vehicles: pageResponse.content,
+                        sortBy: params.sortBy,
+                        sortDirection: params.direction,
+                        onSort: _onSortChanged,
+                        onActionTap: _handleActionPlaceholder,
+                      ),
+                      VehiclePaginationBar(
+                        currentPage: pageResponse.page,
+                        totalPages: pageResponse.totalPages,
+                        totalItems: pageResponse.totalElements,
+                        pageSize: pageResponse.size,
+                        onPageChanged: _onPageChanged,
+                        onPageSizeChanged: _onPageSizeChanged,
+                      ),
+                    ],
+                  );
+                },
+              ),
+            ),
           ),
         ],
       ),
@@ -200,9 +246,21 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
     final actionBlock = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        _buildStatePreviewDropdown(),
-        const SizedBox(width: 12),
+        ShadButton.outline(
+          size: ShadButtonSize.sm,
+          onPressed: () => ref.refresh(vehicleListProvider),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(LucideIcons.refreshCw, size: 14),
+              SizedBox(width: 6),
+              Text('Refresh'),
+            ],
+          ),
+        ),
+        const SizedBox(width: 10),
         ShadButton(
+          size: ShadButtonSize.sm,
           onPressed: _handleAddVehiclePlaceholder,
           child: const Row(
             mainAxisSize: MainAxisSize.min,
@@ -227,112 +285,5 @@ class _VehiclesScreenState extends State<VehiclesScreen> {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [titleBlock, const SizedBox(height: 14), actionBlock],
     );
-  }
-
-  Widget _buildStatePreviewDropdown() {
-    return ShadTooltip(
-      builder: (_) =>
-          const Text('Preview UI states for testing and verification'),
-      child: SizedBox(
-        width: 130,
-        child: ShadSelect<ViewMode>(
-          initialValue: _viewMode,
-          selectedOptionBuilder: (context, value) => Text(switch (value) {
-            ViewMode.normal => 'State: Normal',
-            ViewMode.loading => 'State: Loading',
-            ViewMode.empty => 'State: Empty',
-            ViewMode.error => 'State: Error',
-          }, style: const TextStyle(fontSize: 12)),
-          onChanged: (mode) {
-            if (mode != null) setState(() => _viewMode = mode);
-          },
-          options: const [
-            ShadOption<ViewMode>(
-              value: ViewMode.normal,
-              child: Text('Normal State'),
-            ),
-            ShadOption<ViewMode>(
-              value: ViewMode.loading,
-              child: Text('Loading State'),
-            ),
-            ShadOption<ViewMode>(
-              value: ViewMode.empty,
-              child: Text('Empty State'),
-            ),
-            ShadOption<ViewMode>(
-              value: ViewMode.error,
-              child: Text('Error State'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTableCard(
-    BuildContext context, {
-    required int totalFiltered,
-    required int totalPages,
-    required List<Vehicle> pageVehicles,
-    required ShadColorScheme colorScheme,
-  }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: colorScheme.card,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: colorScheme.border),
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(8),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildMainContent(
-              totalFiltered: totalFiltered,
-              pageVehicles: pageVehicles,
-            ),
-            if (_viewMode == ViewMode.normal && totalFiltered > 0)
-              VehiclePaginationBar(
-                currentPage: _currentPage,
-                totalPages: totalPages,
-                totalItems: totalFiltered,
-                pageSize: _pageSize,
-                onPageChanged: (page) => setState(() => _currentPage = page),
-                onPageSizeChanged: (size) => setState(() {
-                  _pageSize = size;
-                  _currentPage = 0;
-                }),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMainContent({
-    required int totalFiltered,
-    required List<Vehicle> pageVehicles,
-  }) {
-    switch (_viewMode) {
-      case ViewMode.loading:
-        return const VehicleLoadingState();
-      case ViewMode.empty:
-        return VehicleEmptyState(onAddVehicle: _handleAddVehiclePlaceholder);
-      case ViewMode.error:
-        return VehicleErrorState(
-          onRetry: () => setState(() => _viewMode = ViewMode.normal),
-        );
-      case ViewMode.normal:
-        if (totalFiltered == 0) {
-          if (_hasActiveFilters) {
-            return VehicleNoResultsState(onResetFilters: _resetFilters);
-          }
-          return VehicleEmptyState(onAddVehicle: _handleAddVehiclePlaceholder);
-        }
-        return VehicleTable(
-          vehicles: pageVehicles,
-          onActionTap: _handleActionPlaceholder,
-        );
-    }
   }
 }

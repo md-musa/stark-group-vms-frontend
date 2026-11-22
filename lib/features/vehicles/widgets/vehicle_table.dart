@@ -7,8 +7,28 @@ import 'package:frontend/features/vehicles/widgets/vehicle_status_badge.dart';
 class VehicleTable extends StatelessWidget {
   final List<Vehicle> vehicles;
   final ValueChanged<Vehicle>? onActionTap;
+  final String sortBy;
+  final String sortDirection;
+  final void Function(String column, String direction)? onSort;
 
-  const VehicleTable({super.key, required this.vehicles, this.onActionTap});
+  const VehicleTable({
+    super.key,
+    required this.vehicles,
+    this.onActionTap,
+    this.sortBy = 'createdAt',
+    this.sortDirection = 'DESC',
+    this.onSort,
+  });
+
+  void _handleSort(String column) {
+    if (onSort == null) return;
+    if (sortBy == column) {
+      final nextDirection = sortDirection == 'ASC' ? 'DESC' : 'ASC';
+      onSort!(column, nextDirection);
+    } else {
+      onSort!(column, 'ASC');
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -31,13 +51,25 @@ class VehicleTable extends StatelessWidget {
               dataRowMaxHeight: 56,
               headingRowHeight: 44,
               columns: [
-                _buildHeaderColumn('Vehicle Number', context),
-                _buildHeaderColumn('Type', context),
-                _buildHeaderColumn('Brand / Model', context),
-                _buildHeaderColumn('Year', context),
-                _buildHeaderColumn('Driver', context),
-                _buildHeaderColumn('Fuel', context),
-                _buildHeaderColumn('Status', context),
+                _buildHeaderColumn(
+                  'Vehicle Number',
+                  context,
+                  sortField: 'vehicleNumber',
+                ),
+                _buildHeaderColumn('Type', context, sortField: 'vehicleType'),
+                _buildHeaderColumn(
+                  'Brand / Model',
+                  context,
+                  sortField: 'brand',
+                ),
+                _buildHeaderColumn(
+                  'Year',
+                  context,
+                  sortField: 'manufacturingYear',
+                ),
+                _buildHeaderColumn('Driver', context, sortField: 'driverName'),
+                _buildHeaderColumn('Fuel', context, sortField: 'fuelType'),
+                _buildHeaderColumn('Status', context, sortField: 'status'),
                 _buildHeaderColumn('Actions', context, isCenter: true),
               ],
               rows: vehicles.map((v) => _buildDataRow(v, context)).toList(),
@@ -51,19 +83,39 @@ class VehicleTable extends StatelessWidget {
   DataColumn _buildHeaderColumn(
     String label,
     BuildContext context, {
+    String? sortField,
     bool isCenter = false,
   }) {
     final colorScheme = ShadTheme.of(context).colorScheme;
+    final isSorted = sortField != null && sortBy == sortField;
 
     return DataColumn(
-      label: Text(
-        label,
-        style: TextStyle(
-          fontSize: 12,
-          fontWeight: FontWeight.w600,
-          color: colorScheme.mutedForeground,
-          letterSpacing: 0.2,
-        ),
+      onSort: sortField != null ? (_, _) => _handleSort(sortField) : null,
+      label: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: isSorted
+                  ? colorScheme.foreground
+                  : colorScheme.mutedForeground,
+              letterSpacing: 0.2,
+            ),
+          ),
+          if (sortField != null && isSorted) ...[
+            const SizedBox(width: 4),
+            Icon(
+              sortDirection == 'ASC'
+                  ? LucideIcons.arrowUp
+                  : LucideIcons.arrowDown,
+              size: 13,
+              color: colorScheme.foreground,
+            ),
+          ],
+        ],
       ),
     );
   }
@@ -138,7 +190,9 @@ class VehicleTable extends StatelessWidget {
         ),
         DataCell(
           Text(
-            '${vehicle.manufacturingYear}',
+            vehicle.manufacturingYear != null
+                ? '${vehicle.manufacturingYear}'
+                : '—',
             style: TextStyle(fontSize: 13, color: colorScheme.foreground),
           ),
         ),
@@ -148,20 +202,28 @@ class VehicleTable extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                vehicle.driverName,
+                vehicle.driverName != null && vehicle.driverName!.isNotEmpty
+                    ? vehicle.driverName!
+                    : 'Unassigned',
                 style: TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
-                  color: colorScheme.foreground,
+                  color:
+                      vehicle.driverName != null &&
+                          vehicle.driverName!.isNotEmpty
+                      ? colorScheme.foreground
+                      : colorScheme.mutedForeground,
                 ),
               ),
-              Text(
-                vehicle.driverPhone,
-                style: TextStyle(
-                  fontSize: 11,
-                  color: colorScheme.mutedForeground,
+              if (vehicle.driverPhone != null &&
+                  vehicle.driverPhone!.isNotEmpty)
+                Text(
+                  vehicle.driverPhone!,
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: colorScheme.mutedForeground,
+                  ),
                 ),
-              ),
             ],
           ),
         ),
