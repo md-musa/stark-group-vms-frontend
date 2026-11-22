@@ -69,6 +69,9 @@ class AppHeader extends StatelessWidget {
   }
 
   String _pageTitleFromLocation(String location) {
+    if (location.contains('/vehicles/') && location.endsWith('/edit')) {
+      return 'Edit Vehicle';
+    }
     if (location.startsWith('/vehicles/new')) return 'Add Vehicle';
     if (location.startsWith('/vehicles')) return 'Vehicles';
     if (location.startsWith('/settings')) return 'Settings';

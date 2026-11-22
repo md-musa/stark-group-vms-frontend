@@ -9,6 +9,7 @@ import 'package:frontend/features/vehicles/models/vehicle_enums.dart';
 import 'package:frontend/features/vehicles/models/vehicle_query_params.dart';
 import 'package:frontend/features/vehicles/providers/vehicle_providers.dart';
 import 'package:frontend/features/vehicles/widgets/vehicle_filters_bar.dart';
+import 'package:frontend/features/vehicles/widgets/vehicle_form.dart';
 import 'package:frontend/features/vehicles/widgets/vehicle_pagination_bar.dart';
 import 'package:frontend/features/vehicles/widgets/vehicle_state_views.dart';
 import 'package:frontend/features/vehicles/widgets/vehicle_table.dart';
@@ -120,6 +121,29 @@ class _VehiclesScreenState extends ConsumerState<VehiclesScreen> {
     context.go('/vehicles/new');
   }
 
+  void _handleEditVehicle(Vehicle vehicle) {
+    showShadDialog(
+      context: context,
+      builder: (dialogContext) {
+        return ShadDialog(
+          title: Text('Edit Vehicle (${vehicle.vehicleNumber})'),
+          description: const Text(
+            'Update vehicle specifications and driver assignment.',
+          ),
+          constraints: const BoxConstraints(maxWidth: 680),
+          child: VehicleForm(
+            initialVehicle: vehicle,
+            isDialog: true,
+            onCancel: () => Navigator.of(dialogContext).pop(),
+            onSuccess: (_) {
+              Navigator.of(dialogContext).pop();
+            },
+          ),
+        );
+      },
+    );
+  }
+
   void _handleActionPlaceholder(Vehicle vehicle) {
     ShadToaster.of(context).show(
       ShadToast(
@@ -194,6 +218,7 @@ class _VehiclesScreenState extends ConsumerState<VehiclesScreen> {
                         sortDirection: params.direction,
                         onSort: _onSortChanged,
                         onActionTap: _handleActionPlaceholder,
+                        onEditTap: _handleEditVehicle,
                       ),
                       VehiclePaginationBar(
                         currentPage: pageResponse.page,

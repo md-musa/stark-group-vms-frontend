@@ -1,10 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:frontend/main.dart';
 import 'package:frontend/core/network/api_exception.dart';
 import 'package:frontend/features/vehicles/models/create_vehicle_request.dart';
 import 'package:frontend/features/vehicles/models/page_response.dart';
+import 'package:frontend/features/vehicles/models/update_vehicle_request.dart';
 import 'package:frontend/features/vehicles/models/vehicle.dart';
 import 'package:frontend/features/vehicles/models/vehicle_enums.dart';
 import 'package:frontend/features/vehicles/models/vehicle_query_params.dart';
@@ -12,11 +14,24 @@ import 'package:frontend/features/vehicles/repositories/vehicle_repository.dart'
 
 class MockVehicleRepository extends Fake implements VehicleRepository {
   CreateVehicleRequest? lastCreatedRequest;
+  UpdateVehicleRequest? lastUpdatedRequest;
+  int? lastUpdatedId;
   bool shouldThrowConflict = false;
+  List<Vehicle> seedVehicles = [];
 
   @override
   Future<PageResponse<Vehicle>> getVehicles(VehicleQueryParams params) async {
-    return PageResponse<Vehicle>.empty();
+    return PageResponse<Vehicle>(
+      content: seedVehicles,
+      page: 0,
+      size: 10,
+      totalElements: seedVehicles.length,
+      totalPages: seedVehicles.isEmpty ? 0 : 1,
+      first: true,
+      last: true,
+      hasNext: false,
+      hasPrevious: false,
+    );
   }
 
   @override
@@ -45,7 +60,52 @@ class MockVehicleRepository extends Fake implements VehicleRepository {
       updatedAt: DateTime.now(),
     );
   }
+
+  @override
+  Future<Vehicle> updateVehicle(int id, UpdateVehicleRequest request) async {
+    lastUpdatedId = id;
+    lastUpdatedRequest = request;
+    if (shouldThrowConflict) {
+      throw ApiException(
+        message: 'A vehicle with this vehicle number already exists.',
+        statusCode: 409,
+      );
+    }
+    return Vehicle(
+      id: id,
+      vehicleNumber: request.vehicleNumber,
+      vehicleType: request.vehicleType,
+      brand: request.brand,
+      model: request.model,
+      manufacturingYear: request.manufacturingYear,
+      color: request.color,
+      fuelType: request.fuelType,
+      seatingCapacity: request.seatingCapacity,
+      driverName: request.driverName,
+      driverPhone: request.driverPhone,
+      status: VehicleStatus.available,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+  }
 }
+
+Vehicle _sampleVehicle() => Vehicle(
+  id: 1,
+  vehicleNumber: 'DM-GA-11-2041',
+  vehicleType: VehicleType.car,
+  brand: 'Toyota',
+  model: 'Corolla',
+  manufacturingYear: 2022,
+  color: 'White',
+  fuelType: FuelType.petrol,
+  seatingCapacity: 5,
+  driverName: 'Rafiqul Islam',
+  driverPhone: '+880 1712-345678',
+  status: VehicleStatus.available,
+  createdAt: DateTime.now(),
+  updatedAt: DateTime.now(),
+);
 
 void main() {
   testWidgets(
@@ -65,26 +125,21 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      // Tap "Add Vehicle" button from listing screen
       await tester.tap(find.text('Add Vehicle').first);
       await tester.pumpAndSettle();
 
-      // Verify on Add Vehicle page
       expect(find.text('Vehicle Specifications'), findsOneWidget);
       expect(find.text('Save Vehicle'), findsOneWidget);
 
-      // Tap "Save Vehicle" without filling required fields
       await tester.tap(find.text('Save Vehicle'));
       await tester.pumpAndSettle();
 
-      // Verify validation errors
       expect(find.text('Vehicle number is required'), findsOneWidget);
       expect(find.text('Please select a vehicle type'), findsOneWidget);
       expect(find.text('Brand is required'), findsOneWidget);
       expect(find.text('Model is required'), findsOneWidget);
       expect(find.text('Please select a fuel type'), findsOneWidget);
 
-      // Verify repository was not called
       expect(mockRepo.lastCreatedRequest, isNull);
     },
   );
@@ -109,23 +164,13 @@ void main() {
       await tester.tap(find.text('Add Vehicle').first);
       await tester.pumpAndSettle();
 
-      // Enter invalid year (e.g. 1850)
       final textFields = find.byType(EditableText);
-      await tester.enterText(
-        textFields.at(0),
-        'DM-GA-99-0001',
-      ); // vehicle number
-      await tester.enterText(textFields.at(1), 'Toyota'); // brand
-      await tester.enterText(textFields.at(2), 'Corolla'); // model
-      await tester.enterText(textFields.at(3), '1850'); // year (invalid < 1900)
-      await tester.enterText(
-        textFields.at(5),
-        '0',
-      ); // seating capacity (invalid <= 0)
-      await tester.enterText(
-        textFields.at(7),
-        'invalid_phone_#@',
-      ); // phone (invalid pattern)
+      await tester.enterText(textFields.at(0), 'DM-GA-99-0001');
+      await tester.enterText(textFields.at(1), 'Toyota');
+      await tester.enterText(textFields.at(2), 'Corolla');
+      await tester.enterText(textFields.at(3), '1850');
+      await tester.enterText(textFields.at(5), '0');
+      await tester.enterText(textFields.at(7), 'invalid_phone_#@');
 
       await tester.tap(find.text('Save Vehicle'));
       await tester.pumpAndSettle();
@@ -160,20 +205,15 @@ void main() {
     await tester.pumpAndSettle();
 
     final textFields = find.byType(EditableText);
-    await tester.enterText(
-      textFields.at(0),
-      'DM-GA-11-2041',
-    ); // duplicate number
+    await tester.enterText(textFields.at(0), 'DM-GA-11-2041');
     await tester.enterText(textFields.at(1), 'Toyota');
     await tester.enterText(textFields.at(2), 'Corolla');
 
-    // Select Vehicle Type
     await tester.tap(find.text('Select vehicle type'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Car').last);
     await tester.pumpAndSettle();
 
-    // Select Fuel Type
     await tester.tap(find.text('Select fuel type'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Octane').last);
@@ -182,7 +222,6 @@ void main() {
     await tester.tap(find.text('Save Vehicle'));
     await tester.pumpAndSettle();
 
-    // Verify duplicate error feedback
     expect(find.textContaining('already exists'), findsWidgets);
   });
 
@@ -216,23 +255,19 @@ void main() {
     await tester.enterText(textFields.at(6), 'Rahim Uddin');
     await tester.enterText(textFields.at(7), '+880 1711-223344');
 
-    // Select Vehicle Type
     await tester.tap(find.text('Select vehicle type'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Car').last);
     await tester.pumpAndSettle();
 
-    // Select Fuel Type
     await tester.tap(find.text('Select fuel type'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Petrol').last);
     await tester.pumpAndSettle();
 
-    // Submit
     await tester.tap(find.text('Save Vehicle'));
     await tester.pumpAndSettle();
 
-    // Verify repository received the right payload
     expect(mockRepo.lastCreatedRequest, isNotNull);
     expect(mockRepo.lastCreatedRequest!.vehicleNumber, 'DM-GA-88-1234');
     expect(mockRepo.lastCreatedRequest!.brand, 'Honda');
@@ -244,10 +279,110 @@ void main() {
     expect(mockRepo.lastCreatedRequest!.driverName, 'Rahim Uddin');
     expect(mockRepo.lastCreatedRequest!.driverPhone, '+880 1711-223344');
 
-    // Verify navigated back to vehicles list
     expect(
       find.text('Manage, monitor, and inspect your organization fleet.'),
       findsOneWidget,
     );
   });
+
+  testWidgets(
+    'Edit Vehicle dialog opens pre-populated with existing vehicle data',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1440, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      final vehicle = _sampleVehicle();
+      final mockRepo = MockVehicleRepository()..seedVehicles = [vehicle];
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [vehicleRepositoryProvider.overrideWithValue(mockRepo)],
+          child: const StarkGroupVmsApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Click the Edit (pencil) button on the first row
+      await tester.tap(find.byIcon(LucideIcons.pencil).first);
+      await tester.pumpAndSettle();
+
+      // Dialog should open with the vehicle's data pre-populated
+      expect(find.text('Edit Vehicle (DM-GA-11-2041)'), findsOneWidget);
+      expect(find.text('Save Changes'), findsOneWidget);
+      expect(find.text('Cancel'), findsOneWidget);
+
+      // The vehicle number field should be pre-filled
+      expect(find.text('DM-GA-11-2041'), findsWidgets);
+    },
+  );
+
+  testWidgets('Edit Vehicle successfully submits update and closes dialog', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 1200);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() => tester.view.resetPhysicalSize());
+
+    final vehicle = _sampleVehicle();
+    final mockRepo = MockVehicleRepository()..seedVehicles = [vehicle];
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [vehicleRepositoryProvider.overrideWithValue(mockRepo)],
+        child: const StarkGroupVmsApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(LucideIcons.pencil).first);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Save Changes'), findsOneWidget);
+
+    await tester.ensureVisible(find.text('Save Changes'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Save Changes'));
+    await tester.pumpAndSettle();
+
+    expect(mockRepo.lastUpdatedId, 1);
+    expect(mockRepo.lastUpdatedRequest, isNotNull);
+    expect(mockRepo.lastUpdatedRequest!.vehicleNumber, 'DM-GA-11-2041');
+    expect(mockRepo.lastUpdatedRequest!.brand, 'Toyota');
+  });
+
+  testWidgets(
+    'Edit Vehicle handles duplicate vehicle number conflict (HTTP 409)',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1440, 1200);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      final vehicle = _sampleVehicle();
+      final mockRepo = MockVehicleRepository()
+        ..seedVehicles = [vehicle]
+        ..shouldThrowConflict = true;
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [vehicleRepositoryProvider.overrideWithValue(mockRepo)],
+          child: const StarkGroupVmsApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(LucideIcons.pencil).first);
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.text('Save Changes'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Save Changes'));
+      await tester.pumpAndSettle();
+
+      // Conflict error should appear
+      expect(find.textContaining('already exists'), findsWidgets);
+    },
+  );
 }

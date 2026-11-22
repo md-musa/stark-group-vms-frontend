@@ -7,6 +7,7 @@ import 'package:frontend/features/vehicles/widgets/vehicle_status_badge.dart';
 class VehicleTable extends StatelessWidget {
   final List<Vehicle> vehicles;
   final ValueChanged<Vehicle>? onActionTap;
+  final ValueChanged<Vehicle>? onEditTap;
   final String sortBy;
   final String sortDirection;
   final void Function(String column, String direction)? onSort;
@@ -15,6 +16,7 @@ class VehicleTable extends StatelessWidget {
     super.key,
     required this.vehicles,
     this.onActionTap,
+    this.onEditTap,
     this.sortBy = 'createdAt',
     this.sortDirection = 'DESC',
     this.onSort,
@@ -250,19 +252,19 @@ class VehicleTable extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               ShadTooltip(
+                builder: (_) => const Text('Edit vehicle'),
+                child: ShadButton.ghost(
+                  size: ShadButtonSize.sm,
+                  onPressed: () => onEditTap?.call(vehicle),
+                  child: const Icon(LucideIcons.pencil, size: 16),
+                ),
+              ),
+              ShadTooltip(
                 builder: (_) => const Text('View details (coming soon)'),
                 child: ShadButton.ghost(
                   size: ShadButtonSize.sm,
                   onPressed: () => onActionTap?.call(vehicle),
                   child: const Icon(LucideIcons.eye, size: 16),
-                ),
-              ),
-              ShadTooltip(
-                builder: (_) => const Text('More actions (coming soon)'),
-                child: ShadButton.ghost(
-                  size: ShadButtonSize.sm,
-                  onPressed: () => onActionTap?.call(vehicle),
-                  child: const Icon(LucideIcons.ellipsis, size: 16),
                 ),
               ),
             ],
