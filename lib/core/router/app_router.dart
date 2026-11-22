@@ -1,4 +1,5 @@
 import 'package:go_router/go_router.dart';
+import 'package:frontend/features/vehicles/screens/add_vehicle_screen.dart';
 import 'package:frontend/features/vehicles/screens/vehicles_screen.dart';
 import 'package:frontend/features/settings/screens/settings_screen.dart';
 import 'package:frontend/shared/widgets/app_shell.dart';
@@ -13,6 +14,13 @@ final appRouter = GoRouter(
           path: '/vehicles',
           name: 'vehicles',
           builder: (context, state) => const VehiclesScreen(),
+          routes: [
+            GoRoute(
+              path: 'new',
+              name: 'add-vehicle',
+              builder: (context, state) => const AddVehicleScreen(),
+            ),
+          ],
         ),
         GoRoute(
           path: '/settings',

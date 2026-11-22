@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:material_ui/material_ui.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:frontend/features/vehicles/models/vehicle.dart';
 import 'package:frontend/features/vehicles/models/vehicle_enums.dart';
@@ -115,15 +116,8 @@ class _VehiclesScreenState extends ConsumerState<VehiclesScreen> {
     );
   }
 
-  void _handleAddVehiclePlaceholder() {
-    ShadToaster.of(context).show(
-      const ShadToast(
-        title: Text('Add Vehicle'),
-        description: Text(
-          'Vehicle registration feature will be enabled in the next update.',
-        ),
-      ),
-    );
+  void _navigateToAddVehicle() {
+    context.go('/vehicles/new');
   }
 
   void _handleActionPlaceholder(Vehicle vehicle) {
@@ -187,7 +181,7 @@ class _VehiclesScreenState extends ConsumerState<VehiclesScreen> {
                       return VehicleNoResultsState(onResetFilters: _onResetAll);
                     }
                     return VehicleEmptyState(
-                      onAddVehicle: _handleAddVehiclePlaceholder,
+                      onAddVehicle: _navigateToAddVehicle,
                     );
                   }
 
@@ -261,7 +255,7 @@ class _VehiclesScreenState extends ConsumerState<VehiclesScreen> {
         const SizedBox(width: 10),
         ShadButton(
           size: ShadButtonSize.sm,
-          onPressed: _handleAddVehiclePlaceholder,
+          onPressed: _navigateToAddVehicle,
           child: const Row(
             mainAxisSize: MainAxisSize.min,
             children: [

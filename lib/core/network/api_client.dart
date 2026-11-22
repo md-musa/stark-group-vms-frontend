@@ -36,6 +36,22 @@ class ApiClient {
       cancelToken: cancelToken,
     );
   }
+
+  Future<Response<T>> post<T>(
+    String path, {
+    dynamic data,
+    Map<String, dynamic>? queryParameters,
+    Options? options,
+    CancelToken? cancelToken,
+  }) {
+    return dio.post<T>(
+      path,
+      data: data,
+      queryParameters: queryParameters,
+      options: options,
+      cancelToken: cancelToken,
+    );
+  }
 }
 
 final apiClientProvider = Provider<ApiClient>((ref) {

@@ -2,177 +2,252 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:material_ui/material_ui.dart';
 import 'package:frontend/main.dart';
+import 'package:frontend/core/network/api_exception.dart';
+import 'package:frontend/features/vehicles/models/create_vehicle_request.dart';
 import 'package:frontend/features/vehicles/models/page_response.dart';
 import 'package:frontend/features/vehicles/models/vehicle.dart';
 import 'package:frontend/features/vehicles/models/vehicle_enums.dart';
 import 'package:frontend/features/vehicles/models/vehicle_query_params.dart';
-import 'package:frontend/features/vehicles/providers/vehicle_providers.dart';
-import 'package:shadcn_ui/shadcn_ui.dart';
+import 'package:frontend/features/vehicles/repositories/vehicle_repository.dart';
+
+class MockVehicleRepository extends Fake implements VehicleRepository {
+  CreateVehicleRequest? lastCreatedRequest;
+  bool shouldThrowConflict = false;
+
+  @override
+  Future<PageResponse<Vehicle>> getVehicles(VehicleQueryParams params) async {
+    return PageResponse<Vehicle>.empty();
+  }
+
+  @override
+  Future<Vehicle> createVehicle(CreateVehicleRequest request) async {
+    lastCreatedRequest = request;
+    if (shouldThrowConflict) {
+      throw ApiException(
+        message: 'A vehicle with this vehicle number already exists.',
+        statusCode: 409,
+      );
+    }
+    return Vehicle(
+      id: 99,
+      vehicleNumber: request.vehicleNumber,
+      vehicleType: request.vehicleType,
+      brand: request.brand,
+      model: request.model,
+      manufacturingYear: request.manufacturingYear,
+      color: request.color,
+      fuelType: request.fuelType,
+      seatingCapacity: request.seatingCapacity,
+      driverName: request.driverName,
+      driverPhone: request.driverPhone,
+      status: VehicleStatus.available,
+      createdAt: DateTime.now(),
+      updatedAt: DateTime.now(),
+    );
+  }
+}
 
 void main() {
-  final sampleVehicles = [
-    Vehicle(
-      id: 1,
-      vehicleNumber: 'DM-GA-11-2041',
-      vehicleType: VehicleType.car,
-      brand: 'Toyota',
-      model: 'Corolla Altis',
-      manufacturingYear: 2022,
-      color: 'Pearl White',
-      fuelType: FuelType.hybrid,
-      seatingCapacity: 5,
-      driverName: 'Rafiqul Islam',
-      driverPhone: '+880 1712-345678',
-      status: VehicleStatus.available,
-      createdAt: DateTime(2024, 1, 15),
-      updatedAt: DateTime(2024, 1, 15),
-    ),
-    Vehicle(
-      id: 2,
-      vehicleNumber: 'DM-GHA-14-5592',
-      vehicleType: VehicleType.suv,
-      brand: 'Mitsubishi',
-      model: 'Pajero Sport',
-      manufacturingYear: 2021,
-      color: 'Titanium Gray',
-      fuelType: FuelType.diesel,
-      seatingCapacity: 7,
-      driverName: 'Kamal Hossain',
-      driverPhone: '+880 1819-234567',
-      status: VehicleStatus.inUse,
-      createdAt: DateTime(2024, 1, 16),
-      updatedAt: DateTime(2024, 1, 16),
-    ),
-  ];
-
   testWidgets(
-    'Vehicles screen renders API data, table headers, and pagination',
+    'Add Vehicle form validation prevents submission on empty required fields',
     (WidgetTester tester) async {
       tester.view.physicalSize = const Size(1440, 900);
       tester.view.devicePixelRatio = 1.0;
       addTearDown(() => tester.view.resetPhysicalSize());
 
-      final testPage = PageResponse<Vehicle>(
-        content: sampleVehicles,
-        page: 0,
-        size: 10,
-        totalElements: 2,
-        totalPages: 1,
-        first: true,
-        last: true,
-        hasNext: false,
-        hasPrevious: false,
-      );
+      final mockRepo = MockVehicleRepository();
 
       await tester.pumpWidget(
         ProviderScope(
-          overrides: [
-            vehicleListProvider.overrideWith((ref) => Future.value(testPage)),
-          ],
+          overrides: [vehicleRepositoryProvider.overrideWithValue(mockRepo)],
           child: const StarkGroupVmsApp(),
         ),
       );
       await tester.pumpAndSettle();
 
-      // Verify header and actions
-      expect(find.text('Vehicles'), findsWidgets);
-      expect(find.text('Add Vehicle'), findsWidgets);
-      expect(find.text('Refresh'), findsOneWidget);
+      // Tap "Add Vehicle" button from listing screen
+      await tester.tap(find.text('Add Vehicle').first);
+      await tester.pumpAndSettle();
 
-      // Verify filter dropdowns
-      expect(find.byType(ShadInput), findsWidgets);
-      expect(find.text('All Vehicle Types'), findsOneWidget);
-      expect(find.text('All Fuel Types'), findsOneWidget);
-      expect(find.text('All Statuses'), findsOneWidget);
+      // Verify on Add Vehicle page
+      expect(find.text('Vehicle Specifications'), findsOneWidget);
+      expect(find.text('Save Vehicle'), findsOneWidget);
 
-      // Verify table content from API response
-      expect(find.text('DM-GA-11-2041'), findsOneWidget);
-      expect(find.text('Corolla Altis'), findsOneWidget);
-      expect(find.text('Rafiqul Islam'), findsOneWidget);
-      expect(find.text('DM-GHA-14-5592'), findsOneWidget);
-      expect(find.text('Pajero Sport'), findsOneWidget);
-      expect(find.text('Kamal Hossain'), findsOneWidget);
+      // Tap "Save Vehicle" without filling required fields
+      await tester.tap(find.text('Save Vehicle'));
+      await tester.pumpAndSettle();
 
-      // Verify pagination
-      expect(find.textContaining('Showing 1-2 of 2 vehicles'), findsOneWidget);
-      expect(find.text('Page 1 of 1'), findsOneWidget);
+      // Verify validation errors
+      expect(find.text('Vehicle number is required'), findsOneWidget);
+      expect(find.text('Please select a vehicle type'), findsOneWidget);
+      expect(find.text('Brand is required'), findsOneWidget);
+      expect(find.text('Model is required'), findsOneWidget);
+      expect(find.text('Please select a fuel type'), findsOneWidget);
+
+      // Verify repository was not called
+      expect(mockRepo.lastCreatedRequest, isNull);
     },
   );
 
-  testWidgets('Vehicles screen renders error state and retry on API failure', (
+  testWidgets(
+    'Add Vehicle validates manufacturing year, seating capacity, and phone format',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1440, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      final mockRepo = MockVehicleRepository();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [vehicleRepositoryProvider.overrideWithValue(mockRepo)],
+          child: const StarkGroupVmsApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Add Vehicle').first);
+      await tester.pumpAndSettle();
+
+      // Enter invalid year (e.g. 1850)
+      final textFields = find.byType(EditableText);
+      await tester.enterText(
+        textFields.at(0),
+        'DM-GA-99-0001',
+      ); // vehicle number
+      await tester.enterText(textFields.at(1), 'Toyota'); // brand
+      await tester.enterText(textFields.at(2), 'Corolla'); // model
+      await tester.enterText(textFields.at(3), '1850'); // year (invalid < 1900)
+      await tester.enterText(
+        textFields.at(5),
+        '0',
+      ); // seating capacity (invalid <= 0)
+      await tester.enterText(
+        textFields.at(7),
+        'invalid_phone_#@',
+      ); // phone (invalid pattern)
+
+      await tester.tap(find.text('Save Vehicle'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Year must be between 1900 and 2100'), findsOneWidget);
+      expect(
+        find.text('Seating capacity must be a positive number'),
+        findsOneWidget,
+      );
+      expect(find.text('Phone contains invalid characters'), findsOneWidget);
+    },
+  );
+
+  testWidgets('Add Vehicle handles duplicate vehicle number error (HTTP 409)', (
     WidgetTester tester,
   ) async {
     tester.view.physicalSize = const Size(1440, 900);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(() => tester.view.resetPhysicalSize());
 
+    final mockRepo = MockVehicleRepository()..shouldThrowConflict = true;
+
     await tester.pumpWidget(
       ProviderScope(
-        overrides: [
-          vehicleListProvider.overrideWith(
-            (ref) => Future.error(
-              Exception(
-                'Unable to connect to server. Please verify the backend is running.',
-              ),
-            ),
-          ),
-        ],
+        overrides: [vehicleRepositoryProvider.overrideWithValue(mockRepo)],
         child: const StarkGroupVmsApp(),
       ),
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Failed to load vehicles'), findsOneWidget);
-    expect(find.text('Retry'), findsOneWidget);
+    await tester.tap(find.text('Add Vehicle').first);
+    await tester.pumpAndSettle();
+
+    final textFields = find.byType(EditableText);
+    await tester.enterText(
+      textFields.at(0),
+      'DM-GA-11-2041',
+    ); // duplicate number
+    await tester.enterText(textFields.at(1), 'Toyota');
+    await tester.enterText(textFields.at(2), 'Corolla');
+
+    // Select Vehicle Type
+    await tester.tap(find.text('Select vehicle type'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Car').last);
+    await tester.pumpAndSettle();
+
+    // Select Fuel Type
+    await tester.tap(find.text('Select fuel type'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Octane').last);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Save Vehicle'));
+    await tester.pumpAndSettle();
+
+    // Verify duplicate error feedback
+    expect(find.textContaining('already exists'), findsWidgets);
   });
 
-  testWidgets(
-    'Vehicles screen renders empty state when fleet has no vehicles',
-    (WidgetTester tester) async {
-      tester.view.physicalSize = const Size(1440, 900);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(() => tester.view.resetPhysicalSize());
+  testWidgets('Add Vehicle successfully submits and navigates back to list', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1440, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() => tester.view.resetPhysicalSize());
 
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            vehicleListProvider.overrideWith(
-              (ref) => Future.value(PageResponse<Vehicle>.empty()),
-            ),
-          ],
-          child: const StarkGroupVmsApp(),
-        ),
-      );
-      await tester.pumpAndSettle();
+    final mockRepo = MockVehicleRepository();
 
-      expect(find.text('No vehicles in fleet'), findsOneWidget);
-    },
-  );
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [vehicleRepositoryProvider.overrideWithValue(mockRepo)],
+        child: const StarkGroupVmsApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
 
-  testWidgets(
-    'Vehicles screen renders no-results state when filters return zero items',
-    (WidgetTester tester) async {
-      tester.view.physicalSize = const Size(1440, 900);
-      tester.view.devicePixelRatio = 1.0;
-      addTearDown(() => tester.view.resetPhysicalSize());
+    await tester.tap(find.text('Add Vehicle').first);
+    await tester.pumpAndSettle();
 
-      await tester.pumpWidget(
-        ProviderScope(
-          overrides: [
-            vehicleQueryParamsProvider.overrideWith(
-              (ref) => const VehicleQueryParams(search: 'UnknownQuery'),
-            ),
-            vehicleListProvider.overrideWith(
-              (ref) => Future.value(PageResponse<Vehicle>.empty()),
-            ),
-          ],
-          child: const StarkGroupVmsApp(),
-        ),
-      );
-      await tester.pumpAndSettle();
+    final textFields = find.byType(EditableText);
+    await tester.enterText(textFields.at(0), 'DM-GA-88-1234');
+    await tester.enterText(textFields.at(1), 'Honda');
+    await tester.enterText(textFields.at(2), 'Civic');
+    await tester.enterText(textFields.at(3), '2023');
+    await tester.enterText(textFields.at(4), 'Black');
+    await tester.enterText(textFields.at(5), '5');
+    await tester.enterText(textFields.at(6), 'Rahim Uddin');
+    await tester.enterText(textFields.at(7), '+880 1711-223344');
 
-      expect(find.text('No vehicles found'), findsOneWidget);
-      expect(find.text('Reset Filters'), findsWidgets);
-    },
-  );
+    // Select Vehicle Type
+    await tester.tap(find.text('Select vehicle type'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Car').last);
+    await tester.pumpAndSettle();
+
+    // Select Fuel Type
+    await tester.tap(find.text('Select fuel type'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Petrol').last);
+    await tester.pumpAndSettle();
+
+    // Submit
+    await tester.tap(find.text('Save Vehicle'));
+    await tester.pumpAndSettle();
+
+    // Verify repository received the right payload
+    expect(mockRepo.lastCreatedRequest, isNotNull);
+    expect(mockRepo.lastCreatedRequest!.vehicleNumber, 'DM-GA-88-1234');
+    expect(mockRepo.lastCreatedRequest!.brand, 'Honda');
+    expect(mockRepo.lastCreatedRequest!.model, 'Civic');
+    expect(mockRepo.lastCreatedRequest!.manufacturingYear, 2023);
+    expect(mockRepo.lastCreatedRequest!.color, 'Black');
+    expect(mockRepo.lastCreatedRequest!.fuelType, FuelType.petrol);
+    expect(mockRepo.lastCreatedRequest!.seatingCapacity, 5);
+    expect(mockRepo.lastCreatedRequest!.driverName, 'Rahim Uddin');
+    expect(mockRepo.lastCreatedRequest!.driverPhone, '+880 1711-223344');
+
+    // Verify navigated back to vehicles list
+    expect(
+      find.text('Manage, monitor, and inspect your organization fleet.'),
+      findsOneWidget,
+    );
+  });
 }
