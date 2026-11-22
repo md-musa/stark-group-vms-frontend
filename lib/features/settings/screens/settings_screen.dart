@@ -56,22 +56,11 @@ class SettingsScreen extends StatelessWidget {
                     ],
                   ),
                   const SizedBox(height: 16),
-                  _buildSettingRow(
-                    context,
-                    label: 'Base URL',
-                    value: AppConfig.apiBaseUrl,
-                  ),
-                  const SizedBox(height: 12),
-                  _buildSettingRow(
-                    context,
-                    label: 'Theme Mode',
-                    value: 'Light Theme',
-                  ),
-                  const SizedBox(height: 12),
+
                   _buildSettingRow(
                     context,
                     label: 'Application Version',
-                    value: '1.0.0 (Stark Group VMS)',
+                    value: '1.0.0 (Fleetora)',
                   ),
                 ],
               ),

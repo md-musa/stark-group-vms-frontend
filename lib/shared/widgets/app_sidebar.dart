@@ -81,7 +81,7 @@ class _SidebarBranding extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             child: const Center(
-              child: Icon(LucideIcons.zap, size: 18, color: Colors.white),
+              child: Icon(LucideIcons.truck, size: 18, color: Colors.white),
             ),
           ),
           if (!collapsed) ...[
@@ -92,7 +92,7 @@ class _SidebarBranding extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Stark Group',
+                    'Fleetora',
                     style: TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w700,

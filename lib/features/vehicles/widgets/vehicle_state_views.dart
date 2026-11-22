@@ -77,7 +77,7 @@ class VehicleEmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              'Get started by adding your first vehicle to the Stark Group fleet.',
+              'Get started by adding your first vehicle to the Fleetora fleet.',
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 13,

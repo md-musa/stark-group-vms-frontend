@@ -572,7 +572,7 @@ void main() {
 
       // Drawer should be open displaying sidebar branding and navigation
       expect(find.byType(Drawer), findsOneWidget);
-      expect(find.text('Stark Group'), findsWidgets);
+      expect(find.text('Fleetora'), findsWidgets);
       expect(find.text('Settings'), findsWidgets);
     },
   );

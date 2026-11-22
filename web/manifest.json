@@ -1,11 +1,11 @@
 {
-    "name": "Stark Group VMS",
-    "short_name": "Stark VMS",
+    "name": "Fleetora",
+    "short_name": "Fleetora",
     "start_url": ".",
     "display": "standalone",
     "background_color": "#FFFFFF",
     "theme_color": "#18181B",
-    "description": "Enterprise Vehicle Management System for Stark Group fleet operations.",
+    "description": "Enterprise Vehicle Management System for Fleetora fleet operations.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

@@ -5,16 +5,16 @@ import 'package:frontend/core/router/app_router.dart';
 import 'package:frontend/core/theme/app_theme.dart';
 
 void main() {
-  runApp(const ProviderScope(child: StarkGroupVmsApp()));
+  runApp(const ProviderScope(child: FleetoraApp()));
 }
 
-class StarkGroupVmsApp extends StatelessWidget {
-  const StarkGroupVmsApp({super.key});
+class FleetoraApp extends StatelessWidget {
+  const FleetoraApp({super.key});
 
   @override
   Widget build(BuildContext context) {
     return ShadApp.router(
-      title: 'Stark Group VMS',
+      title: 'Fleetora',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.light,
       themeMode: ThemeMode.light,
@@ -22,3 +22,5 @@ class StarkGroupVmsApp extends StatelessWidget {
     );
   }
 }
+
+typedef StarkGroupVmsApp = FleetoraApp;

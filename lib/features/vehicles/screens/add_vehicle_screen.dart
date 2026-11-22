@@ -116,7 +116,7 @@ class AddVehicleScreen extends StatelessWidget {
         ),
         const SizedBox(height: 4),
         Text(
-          'Register a new vehicle into the Stark Group fleet system.',
+          'Register a new vehicle into the Fleetora fleet system.',
           style: TextStyle(fontSize: 14, color: colorScheme.mutedForeground),
         ),
       ],

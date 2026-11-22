@@ -1,5 +1,5 @@
 name: frontend
-description: "Stark Group VMS — Vehicle Management System frontend."
+description: "Fleetora — Vehicle Management System frontend."
 publish_to: 'none'
 
 version: 1.0.0+1

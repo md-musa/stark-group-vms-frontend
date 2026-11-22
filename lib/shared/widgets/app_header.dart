@@ -52,7 +52,7 @@ class AppHeader extends StatelessWidget {
               ),
               child: Center(
                 child: Text(
-                  'SG',
+                  'FL',
                   style: TextStyle(
                     fontSize: 11,
                     fontWeight: FontWeight.w700,
@@ -75,6 +75,6 @@ class AppHeader extends StatelessWidget {
     if (location.startsWith('/vehicles/new')) return 'Add Vehicle';
     if (location.startsWith('/vehicles')) return 'Vehicles';
     if (location.startsWith('/settings')) return 'Settings';
-    return 'Stark Group VMS';
+    return 'Fleetora';
   }
 }
