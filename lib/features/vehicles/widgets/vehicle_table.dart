@@ -8,6 +8,7 @@ class VehicleTable extends StatelessWidget {
   final List<Vehicle> vehicles;
   final ValueChanged<Vehicle>? onActionTap;
   final ValueChanged<Vehicle>? onEditTap;
+  final ValueChanged<Vehicle>? onDeleteTap;
   final String sortBy;
   final String sortDirection;
   final void Function(String column, String direction)? onSort;
@@ -17,6 +18,7 @@ class VehicleTable extends StatelessWidget {
     required this.vehicles,
     this.onActionTap,
     this.onEditTap,
+    this.onDeleteTap,
     this.sortBy = 'createdAt',
     this.sortDirection = 'DESC',
     this.onSort,
@@ -257,6 +259,18 @@ class VehicleTable extends StatelessWidget {
                   size: ShadButtonSize.sm,
                   onPressed: () => onEditTap?.call(vehicle),
                   child: const Icon(LucideIcons.pencil, size: 16),
+                ),
+              ),
+              ShadTooltip(
+                builder: (_) => const Text('Delete vehicle'),
+                child: ShadButton.ghost(
+                  size: ShadButtonSize.sm,
+                  onPressed: () => onDeleteTap?.call(vehicle),
+                  child: const Icon(
+                    LucideIcons.trash2,
+                    size: 16,
+                    color: Color(0xFFDC2626),
+                  ),
                 ),
               ),
               ShadTooltip(

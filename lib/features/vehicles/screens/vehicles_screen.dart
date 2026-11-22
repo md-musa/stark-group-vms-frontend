@@ -8,6 +8,7 @@ import 'package:frontend/features/vehicles/models/vehicle.dart';
 import 'package:frontend/features/vehicles/models/vehicle_enums.dart';
 import 'package:frontend/features/vehicles/models/vehicle_query_params.dart';
 import 'package:frontend/features/vehicles/providers/vehicle_providers.dart';
+import 'package:frontend/features/vehicles/widgets/delete_vehicle_dialog.dart';
 import 'package:frontend/features/vehicles/widgets/vehicle_filters_bar.dart';
 import 'package:frontend/features/vehicles/widgets/vehicle_form.dart';
 import 'package:frontend/features/vehicles/widgets/vehicle_pagination_bar.dart';
@@ -144,6 +145,29 @@ class _VehiclesScreenState extends ConsumerState<VehiclesScreen> {
     );
   }
 
+  Future<void> _handleDeleteVehicle(
+    Vehicle vehicle,
+    int currentPageItemsCount,
+  ) async {
+    final deleted = await showShadDialog<bool>(
+      context: context,
+      builder: (dialogContext) {
+        return DeleteVehicleDialog(vehicle: vehicle);
+      },
+    );
+
+    if (deleted == true && mounted) {
+      final params = ref.read(vehicleQueryParamsProvider);
+      if (currentPageItemsCount == 1 && params.page > 0) {
+        ref.read(vehicleQueryParamsProvider.notifier).state = params.copyWith(
+          page: params.page - 1,
+        );
+      } else {
+        ref.invalidate(vehicleListProvider);
+      }
+    }
+  }
+
   void _handleActionPlaceholder(Vehicle vehicle) {
     ShadToaster.of(context).show(
       ShadToast(
@@ -219,6 +243,10 @@ class _VehiclesScreenState extends ConsumerState<VehiclesScreen> {
                         onSort: _onSortChanged,
                         onActionTap: _handleActionPlaceholder,
                         onEditTap: _handleEditVehicle,
+                        onDeleteTap: (v) => _handleDeleteVehicle(
+                          v,
+                          pageResponse.content.length,
+                        ),
                       ),
                       VehiclePaginationBar(
                         currentPage: pageResponse.page,

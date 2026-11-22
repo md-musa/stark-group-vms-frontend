@@ -10,6 +10,7 @@ import 'package:frontend/features/vehicles/models/update_vehicle_request.dart';
 import 'package:frontend/features/vehicles/models/vehicle.dart';
 import 'package:frontend/features/vehicles/models/vehicle_enums.dart';
 import 'package:frontend/features/vehicles/models/vehicle_query_params.dart';
+import 'package:frontend/features/vehicles/providers/vehicle_providers.dart';
 import 'package:frontend/features/vehicles/repositories/vehicle_repository.dart';
 
 class MockVehicleRepository extends Fake implements VehicleRepository {
@@ -87,6 +88,21 @@ class MockVehicleRepository extends Fake implements VehicleRepository {
       createdAt: DateTime.now(),
       updatedAt: DateTime.now(),
     );
+  }
+
+  int? lastDeletedId;
+  bool shouldThrowDeleteError = false;
+
+  @override
+  Future<void> deleteVehicle(int id) async {
+    lastDeletedId = id;
+    if (shouldThrowDeleteError) {
+      throw const ApiException(
+        message: 'Failed to delete vehicle. Vehicle may be in active use.',
+        statusCode: 400,
+      );
+    }
+    seedVehicles.removeWhere((v) => v.id == id);
   }
 }
 
@@ -383,6 +399,153 @@ void main() {
 
       // Conflict error should appear
       expect(find.textContaining('already exists'), findsWidgets);
+    },
+  );
+
+  testWidgets(
+    'Delete Vehicle shows confirmation dialog with vehicle number and allows cancellation',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1600, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      final vehicle = _sampleVehicle();
+      final mockRepo = MockVehicleRepository()..seedVehicles = [vehicle];
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [vehicleRepositoryProvider.overrideWithValue(mockRepo)],
+          child: const StarkGroupVmsApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.byIcon(LucideIcons.trash2).first);
+      await tester.pumpAndSettle();
+
+      // Tap Delete (trash) icon
+      await tester.tap(find.byIcon(LucideIcons.trash2).first);
+      await tester.pumpAndSettle();
+
+      // Verify dialog is open and displays vehicle number
+      expect(find.text('Delete Vehicle'), findsOneWidget);
+      expect(find.textContaining('DM-GA-11-2041'), findsWidgets);
+      expect(find.text('Cancel'), findsOneWidget);
+      expect(find.text('Delete'), findsOneWidget);
+
+      // Tap Cancel
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+
+      // Verify repository delete was not called
+      expect(mockRepo.lastDeletedId, isNull);
+    },
+  );
+
+  testWidgets(
+    'Delete Vehicle successfully deletes vehicle and triggers list refresh',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1600, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      final vehicle = _sampleVehicle();
+      final mockRepo = MockVehicleRepository()..seedVehicles = [vehicle];
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [vehicleRepositoryProvider.overrideWithValue(mockRepo)],
+          child: const StarkGroupVmsApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.byIcon(LucideIcons.trash2).first);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(LucideIcons.trash2).first);
+      await tester.pumpAndSettle();
+
+      // Tap Delete in dialog
+      await tester.tap(find.text('Delete'));
+      await tester.pumpAndSettle();
+
+      // Verify repository delete was called with vehicle id
+      expect(mockRepo.lastDeletedId, 1);
+      expect(mockRepo.seedVehicles, isEmpty);
+    },
+  );
+
+  testWidgets('Delete Vehicle handles API errors and displays error message', (
+    WidgetTester tester,
+  ) async {
+    tester.view.physicalSize = const Size(1600, 900);
+    tester.view.devicePixelRatio = 1.0;
+    addTearDown(() => tester.view.resetPhysicalSize());
+
+    final vehicle = _sampleVehicle();
+    final mockRepo = MockVehicleRepository()
+      ..seedVehicles = [vehicle]
+      ..shouldThrowDeleteError = true;
+
+    await tester.pumpWidget(
+      ProviderScope(
+        overrides: [vehicleRepositoryProvider.overrideWithValue(mockRepo)],
+        child: const StarkGroupVmsApp(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.byIcon(LucideIcons.trash2).first);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(LucideIcons.trash2).first);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Delete'));
+    await tester.pumpAndSettle();
+
+    // Verify error is shown in dialog
+    expect(
+      find.text('Failed to delete vehicle. Vehicle may be in active use.'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets(
+    'Delete Vehicle adjusts page when deleting last item on page > 0',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(1600, 900);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      final vehicle = _sampleVehicle();
+      final mockRepo = MockVehicleRepository()..seedVehicles = [vehicle];
+
+      final container = ProviderContainer(
+        overrides: [vehicleRepositoryProvider.overrideWithValue(mockRepo)],
+      );
+      container.read(vehicleQueryParamsProvider.notifier).state =
+          const VehicleQueryParams(page: 1);
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: container,
+          child: const StarkGroupVmsApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      await tester.ensureVisible(find.byIcon(LucideIcons.trash2).first);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byIcon(LucideIcons.trash2).first);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Delete'));
+      await tester.pumpAndSettle();
+
+      expect(container.read(vehicleQueryParamsProvider).page, 0);
     },
   );
 }

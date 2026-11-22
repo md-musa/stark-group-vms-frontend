@@ -88,6 +88,19 @@ class VehicleRepository {
       );
     }
   }
+
+  Future<void> deleteVehicle(int id) async {
+    try {
+      await _apiClient.delete('${AppConfig.vehiclesEndpoint}/$id');
+    } on DioException catch (e) {
+      throw ApiException.fromDioException(e);
+    } catch (e) {
+      if (e is ApiException) rethrow;
+      throw ApiException(
+        message: 'An unexpected error occurred: ${e.toString()}',
+      );
+    }
+  }
 }
 
 final vehicleRepositoryProvider = Provider<VehicleRepository>((ref) {
