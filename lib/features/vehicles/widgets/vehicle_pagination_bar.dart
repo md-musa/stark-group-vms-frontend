@@ -28,102 +28,122 @@ class VehiclePaginationBar extends StatelessWidget {
     final canGoPrev = currentPage > 0;
     final canGoNext = currentPage < totalPages - 1;
 
+    final infoWidget = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          'Showing $startItem-$endItem of $totalItems vehicles',
+          style: TextStyle(
+            fontSize: 13,
+            color: colorScheme.mutedForeground,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(width: 16),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Rows per page:',
+              style: TextStyle(
+                fontSize: 12,
+                color: colorScheme.mutedForeground,
+              ),
+            ),
+            const SizedBox(width: 8),
+            SizedBox(
+              width: 72,
+              child: ShadSelect<int>(
+                initialValue: pageSize,
+                selectedOptionBuilder: (context, value) =>
+                    Text('$value', style: const TextStyle(fontSize: 12)),
+                onChanged: (val) {
+                  if (val != null) onPageSizeChanged(val);
+                },
+                options: const [
+                  ShadOption<int>(value: 5, child: Text('5')),
+                  ShadOption<int>(value: 10, child: Text('10')),
+                  ShadOption<int>(value: 20, child: Text('20')),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+
+    final controlsWidget = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          'Page ${totalItems == 0 ? 0 : currentPage + 1} of ${totalPages == 0 ? 1 : totalPages}',
+          style: TextStyle(
+            fontSize: 13,
+            color: colorScheme.mutedForeground,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(width: 12),
+        ShadButton.outline(
+          size: ShadButtonSize.sm,
+          enabled: canGoPrev,
+          onPressed: canGoPrev ? () => onPageChanged(currentPage - 1) : null,
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(LucideIcons.chevronLeft, size: 14),
+              SizedBox(width: 4),
+              Text('Previous'),
+            ],
+          ),
+        ),
+        const SizedBox(width: 8),
+        ShadButton.outline(
+          size: ShadButtonSize.sm,
+          enabled: canGoNext,
+          onPressed: canGoNext ? () => onPageChanged(currentPage + 1) : null,
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text('Next'),
+              SizedBox(width: 4),
+              Icon(LucideIcons.chevronRight, size: 14),
+            ],
+          ),
+        ),
+      ],
+    );
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: colorScheme.card,
         border: Border(top: BorderSide(color: colorScheme.border)),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Row(
-            children: [
-              Text(
-                'Showing $startItem-$endItem of $totalItems vehicles',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: colorScheme.mutedForeground,
-                  fontWeight: FontWeight.w500,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          if (constraints.maxWidth < 640) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: infoWidget,
                 ),
-              ),
-              const SizedBox(width: 16),
-              Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'Rows per page:',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: colorScheme.mutedForeground,
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  SizedBox(
-                    width: 72,
-                    child: ShadSelect<int>(
-                      initialValue: pageSize,
-                      selectedOptionBuilder: (context, value) =>
-                          Text('$value', style: const TextStyle(fontSize: 12)),
-                      onChanged: (val) {
-                        if (val != null) onPageSizeChanged(val);
-                      },
-                      options: const [
-                        ShadOption<int>(value: 5, child: Text('5')),
-                        ShadOption<int>(value: 10, child: Text('10')),
-                        ShadOption<int>(value: 20, child: Text('20')),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-          Row(
-            children: [
-              Text(
-                'Page ${totalItems == 0 ? 0 : currentPage + 1} of ${totalPages == 0 ? 1 : totalPages}',
-                style: TextStyle(
-                  fontSize: 13,
-                  color: colorScheme.mutedForeground,
-                  fontWeight: FontWeight.w500,
+                const SizedBox(height: 10),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: controlsWidget,
                 ),
-              ),
-              const SizedBox(width: 12),
-              ShadButton.outline(
-                size: ShadButtonSize.sm,
-                enabled: canGoPrev,
-                onPressed: canGoPrev
-                    ? () => onPageChanged(currentPage - 1)
-                    : null,
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(LucideIcons.chevronLeft, size: 14),
-                    SizedBox(width: 4),
-                    Text('Previous'),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              ShadButton.outline(
-                size: ShadButtonSize.sm,
-                enabled: canGoNext,
-                onPressed: canGoNext
-                    ? () => onPageChanged(currentPage + 1)
-                    : null,
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('Next'),
-                    SizedBox(width: 4),
-                    Icon(LucideIcons.chevronRight, size: 14),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ],
+              ],
+            );
+          }
+
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [infoWidget, controlsWidget],
+          );
+        },
       ),
     );
   }

@@ -312,7 +312,9 @@ class _VehicleFormState extends ConsumerState<VehicleForm> {
   Widget build(BuildContext context) {
     final colorScheme = ShadTheme.of(context).colorScheme;
     final breakpoint = context.breakpoint;
-    final isDesktop = !widget.isDialog && breakpoint >= ShadBreakpointLG(1024);
+    final isDesktop = !widget.isDialog
+        ? breakpoint >= ShadBreakpointLG(1024)
+        : MediaQuery.sizeOf(context).width >= 600;
 
     return Form(
       key: _formKey,

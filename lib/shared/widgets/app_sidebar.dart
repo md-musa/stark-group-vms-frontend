@@ -158,7 +158,12 @@ class _NavItem extends StatelessWidget {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(6),
-          onTap: () => context.go(path),
+          onTap: () {
+            if (Scaffold.maybeOf(context)?.isDrawerOpen ?? false) {
+              Navigator.of(context).pop();
+            }
+            context.go(path);
+          },
           hoverColor: colorScheme.accent.withAlpha(128),
           child: Padding(
             padding: EdgeInsets.symmetric(

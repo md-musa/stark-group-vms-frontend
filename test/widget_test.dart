@@ -548,4 +548,32 @@ void main() {
       expect(container.read(vehicleQueryParamsProvider).page, 0);
     },
   );
+
+  testWidgets(
+    'Sidebar drawer toggles open on mobile view when menu button is pressed',
+    (WidgetTester tester) async {
+      tester.view.physicalSize = const Size(400, 800);
+      tester.view.devicePixelRatio = 1.0;
+      addTearDown(() => tester.view.resetPhysicalSize());
+
+      final mockRepo = MockVehicleRepository();
+
+      await tester.pumpWidget(
+        ProviderScope(
+          overrides: [vehicleRepositoryProvider.overrideWithValue(mockRepo)],
+          child: const StarkGroupVmsApp(),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // Tap menu button
+      await tester.tap(find.byIcon(LucideIcons.menu));
+      await tester.pumpAndSettle();
+
+      // Drawer should be open displaying sidebar branding and navigation
+      expect(find.byType(Drawer), findsOneWidget);
+      expect(find.text('Stark Group'), findsWidgets);
+      expect(find.text('Settings'), findsWidgets);
+    },
+  );
 }

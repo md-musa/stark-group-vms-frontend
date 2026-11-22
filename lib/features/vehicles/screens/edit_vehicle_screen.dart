@@ -54,8 +54,14 @@ class EditVehicleScreen extends StatelessWidget {
       );
     }
 
+    final breakpoint = context.breakpoint;
+    final isMobile = breakpoint < ShadBreakpointMD(768);
+
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 16 : 24,
+        vertical: isMobile ? 16 : 24,
+      ),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 880),
@@ -67,7 +73,7 @@ class EditVehicleScreen extends StatelessWidget {
               _buildHeader(context),
               const SizedBox(height: 24),
               Container(
-                padding: const EdgeInsets.all(24),
+                padding: EdgeInsets.all(isMobile ? 16 : 24),
                 decoration: BoxDecoration(
                   color: colorScheme.card,
                   borderRadius: BorderRadius.circular(8),

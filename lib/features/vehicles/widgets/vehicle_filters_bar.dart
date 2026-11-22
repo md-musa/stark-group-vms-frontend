@@ -79,34 +79,42 @@ class VehicleFiltersBar extends StatelessWidget {
   }
 
   Widget _buildMobileLayout(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        _buildSearchField(),
-        const SizedBox(height: 12),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final itemWidth = constraints.maxWidth < 420
+            ? constraints.maxWidth
+            : (constraints.maxWidth - 12) / 2;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            SizedBox(width: 170, child: _buildTypeFilter()),
-            SizedBox(width: 170, child: _buildFuelFilter()),
-            SizedBox(width: 170, child: _buildStatusFilter()),
-            if (hasActiveFilters)
-              ShadButton.outline(
-                size: ShadButtonSize.sm,
-                onPressed: onResetAll,
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(LucideIcons.rotateCcw, size: 14),
-                    SizedBox(width: 6),
-                    Text('Reset Filters'),
-                  ],
-                ),
-              ),
+            _buildSearchField(),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 12,
+              runSpacing: 12,
+              children: [
+                SizedBox(width: itemWidth, child: _buildTypeFilter()),
+                SizedBox(width: itemWidth, child: _buildFuelFilter()),
+                SizedBox(width: itemWidth, child: _buildStatusFilter()),
+                if (hasActiveFilters)
+                  ShadButton.outline(
+                    size: ShadButtonSize.sm,
+                    onPressed: onResetAll,
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(LucideIcons.rotateCcw, size: 14),
+                        SizedBox(width: 6),
+                        Text('Reset Filters'),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
           ],
-        ),
-      ],
+        );
+      },
     );
   }
 
